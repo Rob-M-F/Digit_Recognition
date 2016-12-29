@@ -62,7 +62,7 @@ def maybe_extract(filename, force=False):
     tar.close()
   data_folders = [
     os.path.join(root, d) for d in sorted(os.listdir(root))
-    if os.path.isdir(os.path.join(root, d))]
+    if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]
   if len(data_folders) != num_classes:
     raise Exception(
       'Expected %d folders, one per class. Found %d instead.' % (
@@ -70,7 +70,7 @@ def maybe_extract(filename, force=False):
   return data_folders
   
 
-image_size = 28  # Pixel width and height.
+image_size = 28  # Pixel height.
 pixel_depth = 255.0  # Number of levels per pixel.
 
 def load_letter(folder, min_num_images):
@@ -118,85 +118,7 @@ def maybe_pickle(data_folders, min_num_images_per_class, force=False):
           pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
       except Exception as e:
         print('Unable to save data to', set_filename, ':', e)
-
-#  blank_letter = dataset_names[-1][:-8]+'_.pickle'
-#  dataset_names.append(blank_letter)  
-#  if not os.path.exists(blank_letter):
-#      dataset = np.zeros((dataset_length, 28, 28))
-#      set_filename = blank_letter
-#      try:
-#        with open(set_filename, 'wb') as f:
-#          pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
-#      except Exception as e:
-#        print('Unable to save data to', set_filename, ':', e)
   return dataset_names
-
-def make_arrays(nb_rows, img_size):
-  if nb_rows:
-    dataset = np.ndarray((nb_rows, img_size, img_size), dtype=np.float32)
-    labels = np.ndarray(nb_rows, dtype=np.int32)
-  else:
-    dataset, labels = None, None
-  return dataset, labels
-
-def merge_datasets(pickle_files, train_size, valid_size=0):
-  num_classes = len(pickle_files)
-  valid_dataset, valid_labels = make_arrays(valid_size, image_size)
-  train_dataset, train_labels = make_arrays(train_size, image_size)
-  vsize_per_class = valid_size // num_classes
-  tsize_per_class = train_size // num_classes
-    
-  start_v, start_t = 0, 0
-  end_v, end_t = vsize_per_class, tsize_per_class
-  end_l = vsize_per_class+tsize_per_class
-  for label, pickle_file in enumerate(pickle_files):       
-    try:
-      with open(pickle_file, 'rb') as f:
-        letter_set = pickle.load(f)
-        # let's shuffle the letters to have random validation and training set
-        np.random.shuffle(letter_set)
-        if valid_dataset is not None:
-          valid_letter = letter_set[:vsize_per_class, :, :]
-          valid_dataset[start_v:end_v, :, :] = valid_letter
-          valid_labels[start_v:end_v] = label
-          start_v += vsize_per_class
-          end_v += vsize_per_class
-                    
-        train_letter = letter_set[vsize_per_class:end_l, :, :]
-        train_dataset[start_t:end_t, :, :] = train_letter
-        train_labels[start_t:end_t] = label
-        start_t += tsize_per_class
-        end_t += tsize_per_class
-    except Exception as e:
-      print('Unable to process data from', pickle_file, ':', e)
-      raise
-    
-  return valid_dataset, valid_labels, train_dataset, train_labels           
-            
-train_size = 200000
-valid_size = 10000
-test_size = 10000
-
-def randomize(dataset, labels):
-  permutation = np.random.permutation(labels.shape[0])
-  shuffled_dataset = dataset[permutation,:,:]
-  shuffled_labels = labels[permutation]
-  return shuffled_dataset, shuffled_labels
-  
-def normal_not_MNIST():
-    valid_dataset, valid_labels, train_dataset, train_labels = merge_datasets(
-      train_datasets, train_size, valid_size)
-    _, _, test_dataset, test_labels = merge_datasets(test_datasets, test_size)
-    
-    print('Training:', train_dataset.shape, train_labels.shape)
-    print('Validation:', valid_dataset.shape, valid_labels.shape)
-    print('Testing:', test_dataset.shape, test_labels.shape)
-    
-    train_dataset, train_labels = randomize(train_dataset, train_labels)
-    test_dataset, test_labels = randomize(test_dataset, test_labels)
-    valid_dataset, valid_labels = randomize(valid_dataset, valid_labels)
-    
-    return train_dataset, train_labels, test_dataset, test_labels, valid_dataset, valid_labels
 
 def gen_data_dict(pickle_files):
   data_dict = {}
@@ -231,8 +153,8 @@ def gen_dataset(sourceDict, dataSamples=10000, minDigits=3, maxDigits=5):
         dataset.append(np.hstack(sampleNum))
         labels.append(sampleLabel)
 
-    #dataset = np.asarray(dataset)    
-    #labels = np.asarray(labels)    
+    dataset = np.asarray(dataset)    
+    labels = np.asarray(labels)    
     return dataset, labels
     
   
@@ -248,10 +170,23 @@ test_folders = maybe_extract(test_filename)
  
 train_datasets = maybe_pickle(train_folders, 45000)
 test_datasets = maybe_pickle(test_folders, 1800)
-''' 
-train_dataset, train_labels, test_dataset, test_labels, valid_dataset, valid_labels = normal_not_MNIST()
 
-pickle_file = 'notMNIST.pickle'
+train_image_data = gen_data_dict(train_datasets)
+test_image_data = gen_data_dict(test_datasets)
+
+def gen_composite(train_data = train_image_data, test_data = test_image_data):
+    train_dataset, train_labels = gen_dataset(train_data, 200000)
+    valid_dataset, valid_labels = gen_dataset(train_data)
+    test_dataset, test_labels = gen_dataset(test_data)
+    
+    return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
+    
+train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
+
+import matplotlib.pyplot as plt
+plt.imshow(train_dataset[0])
+
+pickle_file = 'generatedData.pickle'
 
 try:
   f = open(pickle_file, 'wb')
@@ -268,18 +203,3 @@ try:
 except Exception as e:
   print('Unable to save data to', pickle_file, ':', e)
   raise
-'''
-train_image_data = gen_data_dict(train_datasets)
-test_image_data = gen_data_dict(test_datasets)
-
-def gen_composite(train_data = train_image_data, test_data = test_image_data):
-    train_dataset, train_labels = gen_dataset(train_data, 200000)
-    valid_dataset, valid_labels = gen_dataset(train_data)
-    test_dataset, test_labels = gen_dataset(test_data)
-    
-    return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
-    
-#train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
-
-#import matplotlib.pyplot as plt
-#plt.imshow(train_dataset[0])
