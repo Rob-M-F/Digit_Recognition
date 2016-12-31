@@ -7,6 +7,7 @@ Created on Mon Dec 26 09:53:22 2016
 
 # Imports
 import os
+import cv2
 import sys
 import random
 import tarfile
@@ -16,30 +17,16 @@ from six.moves.urllib.request import urlretrieve
 from six.moves import cPickle as pickle
 
 url = 'http://commondatastorage.googleapis.com/books1000/'
-last_percent_reported = None
-
-def download_progress_hook(count, blockSize, totalSize):
-  """A hook to report the progress of a download. This is mostly intended for users with
-  slow internet connections. Reports every 1% change in download progress.
-  """
-  global last_percent_reported
-  percent = int(count * blockSize * 100 / totalSize)
-
-  if last_percent_reported != percent:
-    if percent % 5 == 0:
-      sys.stdout.write("%s%%" % percent)
-      sys.stdout.flush()
-    else:
-      sys.stdout.write(".")
-      sys.stdout.flush()
-      
-    last_percent_reported = percent
+num_classes = 10
+image_size = 28  # Pixel height.
+pixel_depth = 255.0  # Number of levels per pixel.
+np.random.seed(133)
         
 def maybe_download(filename, expected_bytes, force=False):
   """Download a file if not present, and make sure it's the right size."""
   if force or not os.path.exists(filename):
     print('Attempting to download:', filename) 
-    filename, _ = urlretrieve(url + filename, filename, reporthook=download_progress_hook)
+    filename, _ = urlretrieve(url + filename, filename)
     print('\nDownload Complete!')
   statinfo = os.stat(filename)
   if statinfo.st_size == expected_bytes:
@@ -68,27 +55,25 @@ def maybe_extract(filename, force=False):
       'Expected %d folders, one per class. Found %d instead.' % (
         num_classes, len(data_folders)))
   return data_folders
-  
-
-image_size = 28  # Pixel height.
-pixel_depth = 255.0  # Number of levels per pixel.
 
 def load_letter(folder, min_num_images):
   """Load the data for a single letter label."""
   image_files = os.listdir(folder)
   dataset = np.ndarray(shape=(len(image_files), image_size, image_size),
                          dtype=np.float32)
-  print(folder)
   num_images = 0
   for image in image_files:
     image_file = os.path.join(folder, image)
     try:
-      image_data = (ndimage.imread(image_file).astype(float) - 
-                    pixel_depth / 2) / pixel_depth
-      if image_data.shape != (image_size, image_size):
-        raise Exception('Unexpected image shape: %s' % str(image_data.shape))
-      dataset[num_images, :, :] = image_data
-      num_images = num_images + 1
+      image_data = cv2.imread(image_file, 0)
+      #cv2.imshow('image', image_data)
+      #image_data = (ndimage.imread(image_file).astype(float) - 
+      #              pixel_depth / 2) / pixel_depth
+      if isinstance(image_data, np.ndarray):
+          if (image_data.shape != (image_size, image_size)):
+              raise Exception('Unexpected image shape: %s' % str(image_data.shape))
+          dataset[num_images, :, :] = image_data
+          num_images = num_images + 1
     except IOError as e:
       print('Could not read:', image_file, ':', e, '- it\'s ok, skipping.')
     
@@ -104,15 +89,12 @@ def load_letter(folder, min_num_images):
         
 def maybe_pickle(data_folders, min_num_images_per_class, force=False):
   dataset_names = []
-  dataset_length = 53000
   for folder in data_folders:
     set_filename = folder + '.pickle'
     dataset_names.append(set_filename)
     if force or not os.path.exists(set_filename):
       print('Pickling %s.' % set_filename)
       dataset = load_letter(folder, min_num_images_per_class)
-      if dataset.shape[0] > dataset_length:
-          dataset_length = dataset.shape[0]
       try:
         with open(set_filename, 'wb') as f:
           pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
@@ -120,6 +102,33 @@ def maybe_pickle(data_folders, min_num_images_per_class, force=False):
         print('Unable to save data to', set_filename, ':', e)
   return dataset_names
 
+def maybe_savez(data_folders, min_num_images_per_class, force=False):
+  dataset_names = []
+  for folder in data_folders:
+    set_filename = folder + '.npz'
+    dataset_names.append(set_filename)
+    if force or not os.path.exists(set_filename):
+      print('Saving %s.' % set_filename)
+      dataset = load_letter(folder, min_num_images_per_class)
+      try:
+        np.savez(set_filename, dataset, dataset=folder)
+      except Exception as e:
+        print('Unable to save data to', set_filename, ':', e)
+  return dataset_names
+
+def maybe_savez2(data_folders, min_num_images_per_class, force=False):
+  dataset_name = data_folders[0][:-1]+'images.npz'
+  dataset = {}
+  if force or not os.path.exists(dataset_name):
+      for folder in data_folders:
+          dataset[folder[-1:]]= load_letter(folder, min_num_images_per_class)
+          print folder[-1],
+  try:
+    np.savez(dataset_name, **dataset)
+  except Exception as e:
+    print('Unable to save data to', dataset_name, ':', e)
+  return dataset
+  
 def gen_data_dict(pickle_files):
   data_dict = {}
   for pickle_file in pickle_files: 
@@ -158,21 +167,27 @@ def gen_dataset(sourceDict, dataSamples=10000, minDigits=3, maxDigits=5):
     return dataset, labels
     
   
-
+print('Starting')
 train_filename = maybe_download('notMNIST_large.tar.gz', 247336696)
 test_filename = maybe_download('notMNIST_small.tar.gz', 8458043)
-
-num_classes = 10
-np.random.seed(133)
+print('Download Complete')
 
 train_folders = maybe_extract(train_filename)
 test_folders = maybe_extract(test_filename)
+print('Extract Complete')
  
 train_datasets = maybe_pickle(train_folders, 45000)
 test_datasets = maybe_pickle(test_folders, 1800)
+print('Pickling Complete')
+
+train_datasets = maybe_savez2(train_folders, 45000)
+test_datasets = maybe_savez2(test_folders, 1800)
+print('Saving Complete')
+
 
 train_image_data = gen_data_dict(train_datasets)
 test_image_data = gen_data_dict(test_datasets)
+print('Data Dictionaries Built')
 
 def gen_composite(train_data = train_image_data, test_data = test_image_data):
     train_dataset, train_labels = gen_dataset(train_data, 200000)
@@ -180,26 +195,8 @@ def gen_composite(train_data = train_image_data, test_data = test_image_data):
     test_dataset, test_labels = gen_dataset(test_data)
     
     return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
-    
-train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
 
-import matplotlib.pyplot as plt
-plt.imshow(train_dataset[0])
+#import matplotlib.pyplot as plt
+#plt.imshow(train_dataset[0])
 
-pickle_file = 'generatedData.pickle'
-
-try:
-  f = open(pickle_file, 'wb')
-  save = {
-    'train_dataset': train_dataset,
-    'train_labels': train_labels,
-    'valid_dataset': valid_dataset,
-    'valid_labels': valid_labels,
-    'test_dataset': test_dataset,
-    'test_labels': test_labels,
-    }
-  pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
-  f.close()
-except Exception as e:
-  print('Unable to save data to', pickle_file, ':', e)
-  raise
+#train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
