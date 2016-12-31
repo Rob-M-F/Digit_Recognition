@@ -126,7 +126,6 @@ def make_composite_dataset():
     #            sampleNum.append(np.ones((28, 28)))
                 sampleNum = np.hstack((sampleNum, np.random.randn(image_size, image_size+4)))
                 sampleLabel += '_'
-            print(sampleNum.shape)
             sampleNum = np.vstack((np.random.randn(4, 164), sampleNum, np.random.randn(4, 164)))
             dataset.append(sampleNum)
             labels.append(sampleLabel)
@@ -180,16 +179,16 @@ def make_composite_dataset():
         except Exception as e:
           print('Unable to process data from', dataset, ':', e)
           raise
+        print(dataset_name)
         return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
     
     
     train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
     
-    import matplotlib.pyplot as plt
-    plt.imshow(train_dataset[0])
-    return gen_dataset(test_image_data)
+#    import matplotlib.pyplot as plt
+#    plt.imshow(train_dataset[0])
+#    return gen_dataset(test_image_data)
 
-bufferData, bufferLabels = make_composite_dataset()
-import matplotlib.pyplot as plt
-plt.imshow(bufferData[0])
-
+#bufferData, bufferLabels = make_composite_dataset()
+#import matplotlib.pyplot as plt
+#plt.imshow(bufferData[0])
