@@ -17,7 +17,7 @@ def make_composite_dataset():
     url = 'http://commondatastorage.googleapis.com/books1000/'
     num_classes = 10
     image_size = 28  # Pixel height.
-    np.random.seed(133)
+    np.random.seed(1)
             
     def maybe_download(filename, expected_bytes, force=False):
       """Download a file if not present, and make sure it's the right size."""
@@ -57,15 +57,12 @@ def make_composite_dataset():
       """Load the data for a single letter label."""
       image_files = os.listdir(folder)
       dataset = np.ndarray(shape=(len(image_files), image_size, image_size),
-                             dtype=np.float32)
+                             dtype=np.uint8)
       num_images = 0
       for image in image_files:
         image_file = os.path.join(folder, image)
         try:
           image_data = cv2.imread(image_file, 0)
-          #cv2.imshow('image', image_data)
-          #image_data = (ndimage.imread(image_file).astype(float) - 
-          #              pixel_depth / 2) / pixel_depth
           if isinstance(image_data, np.ndarray):
               if (image_data.shape != (image_size, image_size)):
                   raise Exception('Unexpected image shape: %s' % str(image_data.shape))
@@ -89,8 +86,8 @@ def make_composite_dataset():
       dataset = {}
       if force or not os.path.exists(dataset_name):
           for folder in data_folders:
-              dataset[folder[-1:]]= load_letter(folder, min_num_images_per_class)
               print folder[-1],
+              dataset[folder[-1:]]= load_letter(folder, min_num_images_per_class)
           try:
             np.savez(dataset_name, **dataset)
           except Exception as e:
@@ -109,29 +106,33 @@ def make_composite_dataset():
       all_data.close()
       return data_dict
     
-    def gen_dataset(sourceDict, dataSamples=10000, minDigits=3, maxDigits=5):
-        dataset = []
-        labels = []
-        for i in range(dataSamples):
-            sampleLen = random.randint(minDigits, maxDigits)
-            sampleNum = np.random.randn(image_size, 4)
-            sampleLabel = ''
-            for j in range(sampleLen):
-                letter = random.choice(sourceDict.keys())
-                image = np.array(random.choice(sourceDict[letter]))
-                sampleNum = np.hstack((sampleNum, image, np.random.randn(image_size, 4)))
-                sampleLabel += letter
-            for j in range(sampleLen, maxDigits):
-    #            sampleNum.append(np.zeros((28, 28)))
-    #            sampleNum.append(np.ones((28, 28)))
-                sampleNum = np.hstack((sampleNum, np.random.randn(image_size, image_size+4)))
-                sampleLabel += '_'
-            sampleNum = np.vstack((np.random.randn(4, 164), sampleNum, np.random.randn(4, 164)))
-            dataset.append(sampleNum)
-            labels.append(sampleLabel)
-    
-        dataset = np.asarray(dataset)    
-        labels = np.asarray(labels)    
+    def gen_dataset(source_dict, data_samples=10000, min_digits=3, max_digits=5, 
+                    image_width=28, image_height=28, image_buffer=4, frame_buffer=4):
+        
+        frame_width = frame_buffer*2 + (image_width + image_buffer * 2) * max_digits
+        frame_height = frame_buffer*2 + (image_height + image_buffer * 2)
+        dataset = np.zeros((data_samples, frame_height, frame_width), np.uint8)
+        #dataset = np.random.randint(0, 256, (data_samples, frame_height, frame_width), 
+        #                            np.uint8)
+        labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
+        for i in range(data_samples):
+            sample_len = random.randint(min_digits, max_digits)
+            label = ''
+            for j in range(max_digits):
+                if j <= sample_len:
+                    letter = random.choice(source_dict.keys())
+                    image = np.array(random.choice(source_dict[letter]))
+                else:
+                    letter = '_'
+                    image = np.zeros((image_height, image_width), np.uint8)
+#                    image = np.random.randint(0, 256, (image_height, image_width), 
+#                                              np.uint8)
+                v_offset = frame_buffer + image_buffer
+                h_offset = frame_buffer + j * (image_width + image_buffer * 2)
+                dataset[i, v_offset : v_offset + image_width, 
+                        h_offset : h_offset + image_height] = image
+                label += letter
+            labels[i] = label
         return dataset, labels
         
       
@@ -167,28 +168,30 @@ def make_composite_dataset():
                 np.savez(dataset_name, **dataset)
             except Exception as e:
                 print('Unable to save data to', dataset_name, ':', e)
-        try: 
-            dataset = np.load(dataset_name)
-            train_dataset = dataset['train_dataset']
-            train_labels = dataset['train_labels']
-            valid_dataset = dataset['valid_dataset']
-            valid_labels = dataset['valid_labels']
-            test_dataset = dataset['test_dataset']
-            test_labels = dataset['test_labels']
-            dataset.close()
-        except Exception as e:
-          print('Unable to process data from', dataset, ':', e)
-          raise
+        else:
+            try: 
+                dataset = np.load(dataset_name)
+                train_dataset = dataset['train_dataset']
+                train_labels = dataset['train_labels']
+                valid_dataset = dataset['valid_dataset']
+                valid_labels = dataset['valid_labels']
+                test_dataset = dataset['test_dataset']
+                test_labels = dataset['test_labels']
+                dataset.close()
+            except Exception as e:
+              print('Unable to process data from', dataset, ':', e)
+              raise
         print(dataset_name)
         return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
     
     
     train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
     
-#    import matplotlib.pyplot as plt
-#    plt.imshow(train_dataset[0])
+    import matplotlib.pyplot as plt
+    plt.imshow(train_dataset[0])
+    print(train_labels[0])
 #    return gen_dataset(test_image_data)
-
-#bufferData, bufferLabels = make_composite_dataset()
+    
+make_composite_dataset()
 #import matplotlib.pyplot as plt
 #plt.imshow(bufferData[0])
