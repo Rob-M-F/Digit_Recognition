@@ -134,6 +134,41 @@ def make_composite_dataset():
                 label += letter
             labels[i] = label
         return dataset, labels
+
+    def get_position(image_size, last_pos, constraint):
+        valid = False
+        print(last_pos, constraint)
+        while not valid:
+            x = np.random.randint(last_pos[0], constraint)
+            y = np.random.randint(last_pos[1], constraint)
+            if x > (last_pos[0] + image_size) and (y > 0):
+                valid = True
+            if y > (last_pos[1] + image_size) and (x > 0):
+                valid = True
+        return (x, y)
+        
+    def gen_dataset_2(source_dict, data_samples=10000, min_digits=3, max_digits=5, 
+                    image_size=28, frame_size=120, image_buffer=2):
+        dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
+        labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
+        for i in range(data_samples):
+            working_digits = random.randint(min_digits, max_digits)
+            sample_len = random.randint(min_digits, working_digits)
+            canvas_size = image_buffer*2 + (image_size + image_buffer*2) * working_digits
+            canvas = np.zeros((canvas_size, canvas_size), np.uint8)
+            label = ''
+            position = (image_buffer-image_size, image_buffer-image_size)
+            for j in range(sample_len):
+                letter = random.choice(source_dict.keys())
+                image = np.array(random.choice(source_dict[letter]))
+                constraint = canvas_size - (image_buffer + (image_size + image_buffer) * (sample_len - j))
+                position = get_position(image_size, position, constraint)
+                canvas[position[0]:position[0]+image_size, position[1]: position[1]+image_size] = np.copy(image)
+                label += letter
+            dataset[i, 0:frame_size, 0:frame_size] = cv2.resize(np.copy(canvas), (frame_size, frame_size))
+            labels[i] = label
+        return dataset, labels
+
         
       
     print('Starting')
@@ -157,10 +192,11 @@ def make_composite_dataset():
     
     def gen_composite(train_data = train_image_data, test_data = test_image_data, force = False):
         dataset_name = 'notMNIST_ML_data.npz'
+        force = True
         if force or not os.path.exists(dataset_name):
-            train_dataset, train_labels = gen_dataset(train_data, 200000)
-            valid_dataset, valid_labels = gen_dataset(train_data)
-            test_dataset, test_labels = gen_dataset(test_data)
+            train_dataset, train_labels = gen_dataset_2(train_data, 200000)
+            valid_dataset, valid_labels = gen_dataset_2(train_data)
+            test_dataset, test_labels = gen_dataset_2(test_data)
             dataset = {'train_dataset':train_dataset, 'train_labels':train_labels,
                        'valid_dataset':valid_dataset, 'valid_labels':valid_labels,
                        'test_dataset':test_dataset, 'test_labels':test_labels}
