@@ -138,7 +138,7 @@ def make_composite_dataset():
 
     def get_position(image_size, last_pos, constraint):
         valid = False
-        print(last_pos, constraint)
+#        print(last_pos, constraint)
         while not valid:
             x = np.random.randint(last_pos[0], constraint)
             y = np.random.randint(last_pos[1], constraint)
@@ -149,18 +149,19 @@ def make_composite_dataset():
         return (x, y)
         
     def gen_dataset_2(source_dict, data_samples=10000, min_digits=3, max_digits=5, 
-                    image_size=28, frame_size=120, image_buffer=2):
+                    image_size=28, frame_size=32, image_buffer=2):
         dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
         bound_box = np.zeros((data_samples, max_digits, 2, 2), np.uint8)
         labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
         for i in range(data_samples):
             working_digits = random.randint(min_digits, max_digits)
             sample_len = random.randint(min_digits, working_digits)
-            canvas_size = image_buffer*2 + (image_size + image_buffer*2) * working_digits
+#            canvas_size = image_buffer*2 + (image_size + image_buffer*2) * working_digits
+            canvas_size = image_buffer*2 + (image_size + image_buffer*2) * sample_len
             canvas = np.zeros((canvas_size, canvas_size), np.uint8)
             label = ''
             position = (image_buffer-image_size, image_buffer-image_size)
-            ratio = float(frame_size) / canvas_size
+            ratio = float(frame_size) / float(canvas_size)
             for j in range(sample_len):
                 letter = random.choice(source_dict.keys())
                 image = np.array(random.choice(source_dict[letter]))
