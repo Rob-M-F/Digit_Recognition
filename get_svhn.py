@@ -70,7 +70,7 @@ def make_composite_dataset():
 
     return dataset
     
-dataset = make_composite_dataset()
-import matplotlib.pyplot as plt
-plt.imshow(dataset['train_dataset'][0])
-print(dataset['train_labels'][0])
+#svhn_data = make_composite_dataset()
+#import matplotlib.pyplot as plt
+#plt.imshow(svhn_data['train_dataset'][0])
+#print(svhn_data['train_labels'][0])

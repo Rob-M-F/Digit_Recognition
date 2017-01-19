@@ -199,7 +199,7 @@ def make_composite_dataset():
     
     def gen_composite(train_data = train_image_data, test_data = test_image_data, force = False):
         dataset_name = 'notMNIST_ML_data.npz'
-        force = True
+        #force = True
         if force or not os.path.exists(dataset_name):
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
@@ -230,13 +230,21 @@ def make_composite_dataset():
     
     train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
     
-    import matplotlib.pyplot as plt
-    plt.imshow(train_dataset[0])
+    dataset = {}
+    dataset['train_dataset'] = train_dataset
+    dataset['train_labels'] = train_labels
+    dataset['valid_dataset'] = valid_dataset
+    dataset['valid_labels'] = valid_labels
+    dataset['test_dataset'] = test_dataset
+    dataset['test_labels'] = test_labels
+    
+#    import matplotlib.pyplot as plt
+#    plt.imshow(train_dataset[0])
 #    plt.show()
-    print(train_labels[0])
+#    print(train_labels[0])
 #    return gen_dataset(test_image_data)
-    return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels    
+    return dataset
 
-dataset = make_composite_dataset()
+#mnist_data = make_composite_dataset()
 #import matplotlib.pyplot as plt
 #plt.imshow(bufferData[0])
