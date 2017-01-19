@@ -148,7 +148,7 @@ def make_composite_dataset():
                 valid = True
         return (x, y)
         
-    def gen_dataset_2(source_dict, data_samples=10000, min_digits=3, max_digits=5, 
+    def gen_dataset_2(source_dict, data_samples=10000, min_digits=1, max_digits=5, 
                     image_size=28, frame_size=32, image_buffer=2):
         dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
         bound_box = np.zeros((data_samples, max_digits, 2, 2), np.uint8)
@@ -204,9 +204,9 @@ def make_composite_dataset():
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
             test_dataset, test_box, test_labels = gen_dataset_2(test_data)
-            dataset = {'train_dataset':train_dataset, 'train_box':train_box, 'train_labels':train_labels,
-                       'valid_dataset':valid_dataset, 'valid_box':valid_box, 'valid_labels':valid_labels,
-                       'test_dataset':test_dataset, 'test_box':test_box, 'test_labels':test_labels}
+            dataset = {'train_dataset':train_dataset, 'train_labels':train_labels,
+                       'valid_dataset':valid_dataset, 'valid_labels':valid_labels,
+                       'test_dataset':test_dataset, 'test_labels':test_labels}
             try:
                 np.savez(dataset_name, **dataset)
             except Exception as e:
@@ -215,37 +215,28 @@ def make_composite_dataset():
             try: 
                 dataset = np.load(dataset_name)
                 train_dataset = dataset['train_dataset']
-                train_box = dataset['train_box']
                 train_labels = dataset['train_labels']
                 valid_dataset = dataset['valid_dataset']
-                valid_box = dataset['valid_box']
                 valid_labels = dataset['valid_labels']
                 test_dataset = dataset['test_dataset']
-                test_box = dataset['test_box']
                 test_labels = dataset['test_labels']
                 dataset.close()
             except Exception as e:
               print('Unable to process data from', dataset, ':', e)
               raise
         print(dataset_name)
-        return train_dataset, train_box, train_labels, valid_dataset, valid_box, valid_labels, test_dataset, test_box, test_labels
+        return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
     
     
-    train_dataset, train_box, train_labels, valid_dataset, valid_box, valid_labels, test_dataset, test_box, test_labels = gen_composite()
+    train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
     
     import matplotlib.pyplot as plt
     plt.imshow(train_dataset[0])
-    currentAxis = plt.gca()
-    for i in range(5):
-        xy = (train_box[0,i,0,0], train_box[0,i,0,1])
-        width = train_box[0,i,1,0]-train_box[0,i,0,0]
-        height = train_box[0,i,1,1] - train_box[0,i,0,1]
-        currentAxis.add_patch(Rectangle(xy, width, height, fill=None, alpha=1, 
-                                        color='g'))
 #    plt.show()
     print(train_labels[0])
 #    return gen_dataset(test_image_data)
-    
-make_composite_dataset()
+    return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels    
+
+dataset = make_composite_dataset()
 #import matplotlib.pyplot as plt
 #plt.imshow(bufferData[0])
