@@ -8,8 +8,6 @@ Created on Tue Jan 17 19:20:46 2017
 import os
 import numpy as np
 import scipy.io
-import sys
-import tarfile
 from six.moves.urllib.request import urlretrieve
 
 np.random.seed(1)
@@ -28,19 +26,6 @@ def maybe_download(url, filename, expected_bytes, force=False):
         raise Exception(
           'Failed to verify ' + filename + '. Can you get to it with a browser?')
       return filename
-
-def maybe_extract_svhn(filename, force=False):
-      root = os.path.splitext(os.path.splitext(filename)[0])[0]  # remove .tar.gz
-      if os.path.isdir(root) and not force:
-        # You may override by setting force=True.
-        pass
-      else:
-        print('Extracting data for %s. This may take a while. Please wait.' % root)
-        tar = tarfile.open(filename)
-        sys.stdout.flush()
-        tar.extractall()
-        tar.close()
-      return root    
       
 def get_svhn_data_labels(dataset):
     working_data = np.swapaxes(dataset['X'], 2, 3)
