@@ -29,7 +29,7 @@ def maybe_download(url, filename, expected_bytes, force=False):
           'Failed to verify ' + filename + '. Can you get to it with a browser?')
       return filename
 
-def maybe_extract(filename, force=False):
+def maybe_extract_svhn(filename, force=False):
       root = os.path.splitext(os.path.splitext(filename)[0])[0]  # remove .tar.gz
       if os.path.isdir(root) and not force:
         # You may override by setting force=True.
@@ -40,10 +40,7 @@ def maybe_extract(filename, force=False):
         sys.stdout.flush()
         tar.extractall()
         tar.close()
-      data_folders = [
-        os.path.join(root, d) for d in sorted(os.listdir(root))
-        if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]
-      return data_folders      
+      return root    
       
 def get_svhn_data_labels(dataset):
     working_data = np.swapaxes(dataset['X'], 2, 3)
@@ -85,51 +82,10 @@ def small_svhn_dataset():
 
     return dataset
 
-def big_svhn_dataset():
-   
-    svhn_url = 'http://ufldl.stanford.edu/housenumbers/'
-
-    print('Starting')
-    train_filename = maybe_download(svhn_url, 'train.tar.gz', 404141560)
-    test_filename = maybe_download(svhn_url, 'test.tar.gz', 276555967)
-    extra_filename = maybe_download(svhn_url, 'extra.tar.gz', 1955489752)
-    print('Download Complete')
-
-    train_folders = maybe_extract(train_filename)
-    test_folders = maybe_extract(test_filename)
-    extra_folders = maybe_extract(extra_filename)
-    print('Extract Complete')
-
-    train_dataset = scipy.io.loadmat(train_filename)
-    test_dataset = scipy.io.loadmat(test_filename)
-    extra_dataset = scipy.io.loadmat(extra_filename)
-    print('Loading Complete')
-   
-    train_dataset, train_labels = get_svhn_data_labels(train_dataset)
-    extra_dataset, extra_labels = get_svhn_data_labels(extra_dataset)
-    extra_dataset = np.append(extra_dataset, train_dataset, axis=0)
-    extra_labels = np.append(extra_labels, train_labels, axis=0)
-    test_dataset, test_labels = get_svhn_data_labels(test_dataset)
-    print('Prepared')  
+def make_composite_dataset():
+    return small_svhn_dataset()
     
-    dataset = {}
-    dataset['train_dataset'] = extra_dataset[32000:]
-    dataset['train_labels'] = extra_labels[32000:]
-    dataset['valid_dataset'] = extra_dataset[:32000]
-    dataset['valid_labels'] = extra_labels[:32000]
-    dataset['test_dataset'] = test_dataset
-    dataset['test_labels'] = test_labels
-    print('Dataset Built')    
-
-    return dataset
-
-def make_composite_dataset(size):
-    if (size == 'big'):
-        return big_svhn_dataset()
-    else:
-        return small_svhn_dataset()
-    
-svhn_data = make_composite_dataset('big')
+svhn_data = make_composite_dataset()
 #import matplotlib.pyplot as plt
 #plt.imshow(svhn_data['train_dataset'][0])
 #print(svhn_data['train_labels'][0])
