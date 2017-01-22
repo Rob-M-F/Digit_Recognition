@@ -149,7 +149,7 @@ def make_composite_dataset():
         return (x, y)
         
     def gen_dataset_2(source_dict, data_samples=10000, min_digits=1, max_digits=5, 
-                    image_size=28, frame_size=32, image_buffer=2):
+                    image_size=28, frame_size=128, image_buffer=2):
         dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
         bound_box = np.zeros((data_samples, max_digits, 2, 2), np.uint8)
         labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
@@ -172,6 +172,7 @@ def make_composite_dataset():
                 bound_box[i, j, 0, :] = int(round(place[0] * ratio)), int(round(place[2] * ratio))
                 bound_box[i, j, 1, :] = int(round(place[1] * ratio)), int(round(place[3] * ratio))
                 label += letter
+            label += ' '*(max_digits-len(label))
             dataset[i, 0:frame_size, 0:frame_size] = cv2.resize(np.copy(canvas), (frame_size, frame_size))
             labels[i] = label
         return dataset, bound_box, labels
@@ -199,7 +200,7 @@ def make_composite_dataset():
     
     def gen_composite(train_data = train_image_data, test_data = test_image_data, force = False):
         dataset_name = 'notMNIST_ML_data.npz'
-        #force = True
+        force = True
         if force or not os.path.exists(dataset_name):
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
@@ -238,13 +239,13 @@ def make_composite_dataset():
     dataset['test_dataset'] = test_dataset
     dataset['test_labels'] = test_labels
     
-#    import matplotlib.pyplot as plt
-#    plt.imshow(train_dataset[0])
+    import matplotlib.pyplot as plt
+    plt.imshow(train_dataset[0])
 #    plt.show()
-#    print(train_labels[0])
+    print(train_labels[0])
 #    return gen_dataset(test_image_data)
     return dataset
 
-#mnist_data = make_composite_dataset()
-#import matplotlib.pyplot as plt
-#plt.imshow(bufferData[0])
+mnist_data = make_composite_dataset()
+import matplotlib.pyplot as plt
+plt.imshow(mnist_data['train_dataset'][0])
