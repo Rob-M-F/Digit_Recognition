@@ -8,6 +8,7 @@ Created on Tue Jan 17 19:20:46 2017
 from __future__ import print_function
 import digitStruct
 import os
+import cv2
 import numpy as np
 import scipy.io
 import sys
@@ -47,14 +48,44 @@ def maybe_extract(filename, force=False):
       return data_folders      
 
 def read_mat_7_3(mat_file):
-    import h5py
-    f = h5py.File(mat_file, 'r')
-    for dsObj in yieldNextDigitStruct(f):
-        print(dsObj.name)
+    objectList = []
+    x_pix = []
+    y_pix = []
+    for dsObj in digitStruct.yieldNextDigitStruct(mat_file):
+        label = ''
+        bounding = []
         for bbox in dsObj.bboxList:
-            print("    {}:{},{},{},{}".format(
-                bbox.label, bbox.left, bbox.top, bbox.width, bbox.height))
-    return None
+            label += str(bbox.label)
+            boundBox = (bbox.label, bbox.left, bbox.top, bbox.width, bbox.height)
+            bounding.append(boundBox)
+        try:
+          image_name = mat_file.split('\\')[0] + '\\' + dsObj.name
+          image = cv2.imread(image_name, 0)
+          if isinstance(image, np.ndarray):
+              y = len(image)
+              x = len(image[0])
+              x_pix.append(x)
+              y_pix.append(y)
+              data = (image_name, x, y, bounding, label)              
+              objectList.append(data)
+        except IOError as e:
+          print('Could not read:', image_name, ':', e, '- it\'s ok, skipping.')
+    data_len = len(objectList)
+    x = max(x_pix)
+    y = max(y_pix)
+    print(data_len, x, y)
+    dataset = np.ndarray((data_len, 3), dtype='s32')
+    bbox_set = np.ndarray((data_len, 5, 5))
+    labels = np.ndarray((data_len))
+    for s, sample in enumerate(objectList):
+        dataset[s, 0] = sample[0]
+        dataset[s, 1] = sample[1]
+        dataset[s, 2] = sample[2]
+        labels[s] = sample[2]
+        for b, bbox in enumerate(sample[1]):
+            bbox_set[s, b, :] = bbox
+    return objectList, bb0x_set, labels
+    
       
 def get_svhn_data_labels(dataset):
     working_data = np.swapaxes(dataset['X'], 2, 3)
