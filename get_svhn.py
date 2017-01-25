@@ -5,6 +5,8 @@ Created on Tue Jan 17 19:20:46 2017
 @author: RMFit
 """
 # Imports
+from __future__ import print_function
+import digitStruct
 import os
 import numpy as np
 import scipy.io
@@ -21,7 +23,6 @@ def maybe_download(url, filename, expected_bytes, force=False):
         filename, _ = urlretrieve(url + filename, filename)
         print('\nDownload Complete!')
       statinfo = os.stat(filename)
-      print(statinfo.st_size)
       if statinfo.st_size == expected_bytes:
         pass
       else:
@@ -44,6 +45,16 @@ def maybe_extract(filename, force=False):
         os.path.join(root, d) for d in sorted(os.listdir(root))
         if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]
       return data_folders      
+
+def read_mat_7_3(mat_file):
+    import h5py
+    f = h5py.File(mat_file, 'r')
+    for dsObj in yieldNextDigitStruct(f):
+        print(dsObj.name)
+        for bbox in dsObj.bboxList:
+            print("    {}:{},{},{},{}".format(
+                bbox.label, bbox.left, bbox.top, bbox.width, bbox.height))
+    return None
       
 def get_svhn_data_labels(dataset):
     working_data = np.swapaxes(dataset['X'], 2, 3)
@@ -95,14 +106,15 @@ def big_svhn_dataset():
     extra_filename = maybe_download(svhn_url, 'extra.tar.gz', 1955489752)
     print('Download Complete')
 
-    train_folders = maybe_extract(train_filename)
+#    train_folders = maybe_extract(train_filename)
     test_folders = maybe_extract(test_filename)
-    extra_folders = maybe_extract(extra_filename)
+#    extra_folders = maybe_extract(extra_filename)
     print('Extract Complete')
 
-    train_dataset = scipy.io.loadmat(train_filename)
-    test_dataset = scipy.io.loadmat(test_filename)
-    extra_dataset = scipy.io.loadmat(extra_filename)
+    test_dataset = read_mat_7_3("test\digitStruct.mat")
+#    train_dataset = scipy.io.loadmat('train\digitStruct.mat')
+#    test_dataset = scipy.io.loadmat('test\digiStruct.mat')
+#    extra_dataset = scipy.io.loadmat('extra\digiStruct.mat')
     print('Loading Complete')
    
     train_dataset, train_labels = get_svhn_data_labels(train_dataset)
