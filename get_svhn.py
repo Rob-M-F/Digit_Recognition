@@ -44,8 +44,7 @@ def maybe_extract(filename, force=False):
         tar.close()
       data_folders = [
         os.path.join(root, d) for d in sorted(os.listdir(root))
-        if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]
-      return data_folders      
+        if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]   
 
 def read_mat_7_3(mat_file):
     objectList = []
@@ -74,17 +73,32 @@ def read_mat_7_3(mat_file):
     x = max(x_pix)
     y = max(y_pix)
     print(data_len, x, y)
-    dataset = np.ndarray((data_len, 3), dtype='s32')
-    bbox_set = np.ndarray((data_len, 5, 5))
+    dataset = np.ndarray((data_len, 3), dtype='|S32')
+    bbox_set = np.ndarray((data_len, 6, 5))
     labels = np.ndarray((data_len))
     for s, sample in enumerate(objectList):
         dataset[s, 0] = sample[0]
         dataset[s, 1] = sample[1]
         dataset[s, 2] = sample[2]
-        labels[s] = sample[2]
-        for b, bbox in enumerate(sample[1]):
+        labels[s] = sample[4]
+        for b, bbox in enumerate(sample[3]):
             bbox_set[s, b, :] = bbox
-    return objectList, bb0x_set, labels
+    return objectList, bbox_set, labels
+    
+def get_mat_7_3(mat_file, force=False):
+    filename = mat_file[:-4] + '.npz'
+    force=True
+    if force or not os.path.exists(filename):
+        print('Attempting to build:', filename) 
+        dataset, bbox, labels = read_mat_7_3(mat_file)
+        data = {'dataset':dataset, 'bbox':bbox, 'labels':labels}
+        print('\nBuild Complete!')
+        np.savez(filename, **data)
+    else:
+        data = np.load(filename)
+        print(data.keys())
+        
+    return data['dataset'], data['bbox'], data['labels']
     
       
 def get_svhn_data_labels(dataset):
@@ -137,24 +151,16 @@ def big_svhn_dataset():
     extra_filename = maybe_download(svhn_url, 'extra.tar.gz', 1955489752)
     print('Download Complete')
 
-#    train_folders = maybe_extract(train_filename)
-    test_folders = maybe_extract(test_filename)
-#    extra_folders = maybe_extract(extra_filename)
+    maybe_extract(train_filename)
+    maybe_extract(test_filename)
+    maybe_extract(extra_filename)
     print('Extract Complete')
 
-    test_dataset = read_mat_7_3("test\digitStruct.mat")
-#    train_dataset = scipy.io.loadmat('train\digitStruct.mat')
-#    test_dataset = scipy.io.loadmat('test\digiStruct.mat')
-#    extra_dataset = scipy.io.loadmat('extra\digiStruct.mat')
+    train_dataset, train_bbox, train_labels = get_mat_7_3("train\digitStruct.mat")
+    test_dataset, test_bbox, test_labels = get_mat_7_3("test\digitStruct.mat")
+    extra_dataset, extra_bbox, extra_labels = get_mat_7_3("extra\digitStruct.mat")
     print('Loading Complete')
-   
-    train_dataset, train_labels = get_svhn_data_labels(train_dataset)
-    extra_dataset, extra_labels = get_svhn_data_labels(extra_dataset)
-    extra_dataset = np.append(extra_dataset, train_dataset, axis=0)
-    extra_labels = np.append(extra_labels, train_labels, axis=0)
-    test_dataset, test_labels = get_svhn_data_labels(test_dataset)
-    print('Prepared')  
-    
+
     dataset = {}
     dataset['train_dataset'] = extra_dataset[32000:]
     dataset['train_labels'] = extra_labels[32000:]
