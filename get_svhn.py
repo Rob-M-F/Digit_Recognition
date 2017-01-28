@@ -73,32 +73,31 @@ def read_mat_7_3(mat_file):
     x = max(x_pix)
     y = max(y_pix)
     print(data_len, x, y)
-    dataset = np.ndarray((data_len, 3), dtype='|S32')
-    bbox_set = np.ndarray((data_len, 6, 5))
-    labels = np.ndarray((data_len))
+    dataset = np.ndarray((data_len, 2), dtype='|S16')
+    bbox_set = np.ndarray((data_len, 6, 5), dtype=np.int16)
+    sizes = np.ndarray((data_len, 2), dtype=np.int16)
     for s, sample in enumerate(objectList):
         dataset[s, 0] = sample[0]
-        dataset[s, 1] = sample[1]
-        dataset[s, 2] = sample[2]
-        labels[s] = sample[4]
+        dataset[s, 1] = sample[4]
+        sizes[s, 0] = sample[1]
+        sizes[s, 1] = sample[2]
         for b, bbox in enumerate(sample[3]):
             bbox_set[s, b, :] = bbox
-    return objectList, bbox_set, labels
+    return dataset, bbox_set, sizes
     
 def get_mat_7_3(mat_file, force=False):
     filename = mat_file[:-4] + '.npz'
     force=True
     if force or not os.path.exists(filename):
         print('Attempting to build:', filename) 
-        dataset, bbox, labels = read_mat_7_3(mat_file)
-        data = {'dataset':dataset, 'bbox':bbox, 'labels':labels}
+        dataset, bbox, img_dims = read_mat_7_3(mat_file)
+        data = {'dataset':dataset, 'bbox':bbox, 'img_dims':img_dims}
         print('\nBuild Complete!')
         np.savez(filename, **data)
     else:
         data = np.load(filename)
-        print(data.keys())
         
-    return data['dataset'], data['bbox'], data['labels']
+    return data['dataset'], data['bbox'], data['img_dims']
     
       
 def get_svhn_data_labels(dataset):
@@ -156,8 +155,8 @@ def big_svhn_dataset():
     maybe_extract(extra_filename)
     print('Extract Complete')
 
-    train_dataset, train_bbox, train_labels = get_mat_7_3("train\digitStruct.mat")
     test_dataset, test_bbox, test_labels = get_mat_7_3("test\digitStruct.mat")
+    train_dataset, train_bbox, train_labels = get_mat_7_3("train\digitStruct.mat")
     extra_dataset, extra_bbox, extra_labels = get_mat_7_3("extra\digitStruct.mat")
     print('Loading Complete')
 
