@@ -4,7 +4,7 @@ Created on Mon Dec 26 09:53:22 2016
 
 @author: RMFit
 """
-def make_composite_dataset():
+def make_composite_dataset(force=False):
     # Imports
     import os
     import cv2
@@ -87,7 +87,7 @@ def make_composite_dataset():
       dataset = {}
       if force or not os.path.exists(dataset_name):
           for folder in data_folders:
-              print folder[-1],
+              print(folder[-1], end=' ')
               dataset[folder[-1:]]= load_letter(folder, min_num_images_per_class)
           try:
             np.savez(dataset_name, **dataset)
@@ -162,8 +162,9 @@ def make_composite_dataset():
             label = ''
             position = (image_buffer-image_size, image_buffer-image_size)
             ratio = float(frame_size) / float(canvas_size)
+            letters = list(source_dict.keys())
             for j in range(sample_len):
-                letter = random.choice(source_dict.keys())
+                letter = random.choice(letters)
                 image = np.array(random.choice(source_dict[letter]))
                 constraint = canvas_size - (image_buffer + (image_size + image_buffer) * (sample_len - j))
                 position = get_position(image_size, position, constraint)
@@ -200,14 +201,15 @@ def make_composite_dataset():
     
     def gen_composite(train_data = train_image_data, test_data = test_image_data, force = False):
         dataset_name = 'notMNIST_ML_data.npz'
-        force = True
         if force or not os.path.exists(dataset_name):
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
             test_dataset, test_box, test_labels = gen_dataset_2(test_data)
-            dataset = {'train_dataset':train_dataset, 'train_labels':train_labels,
-                       'valid_dataset':valid_dataset, 'valid_labels':valid_labels,
-                       'test_dataset':test_dataset, 'test_labels':test_labels}
+            dataset = {'train_dataset':train_dataset, 'train_box':train_box,
+                       'train_labels':train_labels, 'valid_dataset':valid_dataset, 
+                       'valid_box':valid_box, 'valid_labels':valid_labels,
+                       'test_dataset':test_dataset, 'test_box':test_box, 
+                       'test_labels':test_labels}
             try:
                 np.savez(dataset_name, **dataset)
             except Exception as e:
@@ -216,20 +218,23 @@ def make_composite_dataset():
             try: 
                 dataset = np.load(dataset_name)
                 train_dataset = dataset['train_dataset']
+                train_box = dataset['train_box']
                 train_labels = dataset['train_labels']
                 valid_dataset = dataset['valid_dataset']
+                valid_box = dataset['valid_box']
                 valid_labels = dataset['valid_labels']
                 test_dataset = dataset['test_dataset']
+                test_box = dataset['test_box']
                 test_labels = dataset['test_labels']
                 dataset.close()
             except Exception as e:
               print('Unable to process data from', dataset, ':', e)
               raise
         print(dataset_name)
-        return train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels
+        return (train_dataset, train_box, train_labels, valid_dataset, valid_box, 
+                valid_labels, test_dataset, test_labels, test_labels)
     
-    
-    train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels = gen_composite()
+    train_dataset, train_box, train_labels, valid_dataset, valid_box, valid_labels, test_dataset, test_labels, test_labels = gen_composite()
     
     dataset = {}
     dataset['train_dataset'] = train_dataset
@@ -239,8 +244,8 @@ def make_composite_dataset():
     dataset['test_dataset'] = test_dataset
     dataset['test_labels'] = test_labels
     
-    import matplotlib.pyplot as plt
-    plt.imshow(train_dataset[0])
+#    import matplotlib.pyplot as plt
+#    plt.imshow(train_dataset[0])
 #    plt.show()
     print(train_labels[0])
 #    return gen_dataset(test_image_data)
