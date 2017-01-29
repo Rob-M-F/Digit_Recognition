@@ -5,8 +5,6 @@ Created on Tue Jan 17 19:20:46 2017
 @author: RMFit
 """
 # Imports
-from __future__ import print_function
-import digitStruct
 import os
 import cv2
 import numpy as np
@@ -42,11 +40,9 @@ def maybe_extract(filename, force=False):
         sys.stdout.flush()
         tar.extractall()
         tar.close()
-      data_folders = [
-        os.path.join(root, d) for d in sorted(os.listdir(root))
-        if os.path.isdir(os.path.join(root, d)) and (len(d) == 1)]   
 
 def read_mat_7_3(mat_file):
+    import digitStruct
     objectList = []
     x_pix = []
     y_pix = []
@@ -87,7 +83,6 @@ def read_mat_7_3(mat_file):
     
 def get_mat_7_3(mat_file, force=False):
     filename = mat_file[:-4] + '.npz'
-    force=True
     if force or not os.path.exists(filename):
         print('Attempting to build:', filename) 
         dataset, bbox, img_dims = read_mat_7_3(mat_file)
@@ -159,7 +154,7 @@ def big_svhn_dataset():
     train_dataset, train_bbox, train_labels = get_mat_7_3("train\digitStruct.mat")
     extra_dataset, extra_bbox, extra_labels = get_mat_7_3("extra\digitStruct.mat")
     print('Loading Complete')
-
+    
     dataset = {}
     dataset['train_dataset'] = extra_dataset[32000:]
     dataset['train_labels'] = extra_labels[32000:]
