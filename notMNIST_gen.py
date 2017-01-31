@@ -176,15 +176,13 @@ def make_composite_dataset(force=False):
             label += ' '*(max_digits-len(label))
             dataset[i, 0:frame_size, 0:frame_size] = cv2.resize(np.copy(canvas), (frame_size, frame_size))
             labels[i] = label
+            labels = np.reshape(labels, (-1, 1))
         return dataset, bound_box, labels
 
-        
-      
     print('Starting')
     train_filename = maybe_download('notMNIST_large.tar.gz', 247336696)
     test_filename = maybe_download('notMNIST_small.tar.gz', 8458043)
     print('Download Complete')
-    
     
     train_folders = maybe_extract(train_filename)
     test_folders = maybe_extract(test_filename)
@@ -193,7 +191,6 @@ def make_composite_dataset(force=False):
     train_datasets = maybe_savez(train_folders, 45000)
     test_datasets = maybe_savez(test_folders, 1800)
     print('Saving Complete')
-    
     
     train_image_data = gen_data_dict(train_datasets)
     test_image_data = gen_data_dict(test_datasets)
@@ -205,32 +202,32 @@ def make_composite_dataset(force=False):
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
             test_dataset, test_box, test_labels = gen_dataset_2(test_data)
-            dataset = {'train_dataset':train_dataset, 'train_box':train_box,
-                       'train_labels':train_labels, 'valid_dataset':valid_dataset, 
-                       'valid_box':valid_box, 'valid_labels':valid_labels,
-                       'test_dataset':test_dataset, 'test_box':test_box, 
+            train = {'train_dataset':train_dataset, 'train_box':train_box,
+                       'train_labels':train_labels}
+            valid = {'valid_dataset':valid_dataset, 'valid_box':valid_box, 
+                       'valid_labels':valid_labels}
+            test = {'test_dataset':test_dataset, 'test_box':test_box, 
                        'test_labels':test_labels}
             try:
-                np.savez(dataset_name, **dataset)
+                np.savez_compressed(dataset_name, fix_imports=False, **dataset)
             except Exception as e:
                 print('Unable to save data to', dataset_name, ':', e)
         else:
-            try: 
-                dataset = np.load(dataset_name)
-                train_dataset = dataset['train_dataset']
-                train_box = dataset['train_box']
-                train_labels = dataset['train_labels']
-                valid_dataset = dataset['valid_dataset']
-                valid_box = dataset['valid_box']
-                valid_labels = dataset['valid_labels']
-                test_dataset = dataset['test_dataset']
-                test_box = dataset['test_box']
-                test_labels = dataset['test_labels']
-                dataset.close()
-            except Exception as e:
-              print('Unable to process data from', dataset, ':', e)
-              raise
-        print(dataset_name)
+            with np.load(dataset_name, fix_imports=False) as dataset:
+                try:                 
+                    train_dataset = dataset['train_dataset']
+                    train_box = dataset['train_box']
+                    train_labels = dataset['train_labels']
+                    valid_dataset = dataset['valid_dataset']
+                    valid_box = dataset['valid_box']
+                    valid_labels = dataset['valid_labels']
+                    test_dataset = dataset['test_dataset']
+                    test_box = dataset['test_box']
+                    test_labels = dataset['test_labels']
+#                dataset.close()
+                except Exception as e:
+                  print('Unable to process data from', dataset, ':', e)
+                  raise
         return (train_dataset, train_box, train_labels, valid_dataset, valid_box, 
                 valid_labels, test_dataset, test_labels, test_labels)
     
