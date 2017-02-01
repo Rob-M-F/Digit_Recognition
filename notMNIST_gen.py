@@ -16,9 +16,9 @@ def make_composite_dataset(force=False):
     from matplotlib.patches import Rectangle
     
     url = 'http://commondatastorage.googleapis.com/books1000/'
-    num_classes = 10
-    image_size = 28  # Pixel height.
-    np.random.seed(1)
+    num_classes = 10 # Total number of possible classes
+    image_size = 28  # Source dataset image height in pixels
+    random.seed(0) # Comment out to generate random datasets
             
     def maybe_download(filename, expected_bytes, force=False):
       """Download a file if not present, and make sure it's the right size."""
@@ -140,8 +140,10 @@ def make_composite_dataset(force=False):
         valid = False
 #        print(last_pos, constraint)
         while not valid:
-            x = np.random.randint(last_pos[0], constraint)
-            y = np.random.randint(last_pos[1], constraint)
+#            x = np.random.randint(last_pos[0], constraint)
+#            y = np.random.randint(last_pos[1], constraint)
+            x = random.randint(last_pos[0], constraint)
+            y = random.randint(last_pos[1], constraint)
             if x > (last_pos[0] + image_size) and (y > 0):
                 valid = True
             if y > (last_pos[1] + image_size) and (x > 0):
@@ -199,58 +201,80 @@ def make_composite_dataset(force=False):
     test_image_data = gen_data_dict(test_datasets)
     print('Data Dictionaries Built')
     
+    def divide_dataset(dataset, labels, name, data_dict = {}, parts=4):
+        total_len = dataset.shape[0]
+        if total_len % parts == 0:
+            section_len = total_len // parts
+        else:
+            section_len = total_len // (parts - 1)
+        for p in range(parts):
+            start = p * section_len
+            end = (p+1) * section_len
+            if end > total_len:
+                end = total_len
+            data_dict[name + '_' + str(p) + '_data'] = dataset[start:end]
+            data_dict[name + '_' + str(p) + '_labels'] = labels[start:end]
+        return data_dict
+    
+    def reassemble_dataset(data_dict):
+        key_list = list(data_dict.keys())
+        key_dict = {}
+        for key in key_list:
+            current = key.split(sep='_')
+            if int(current[1]) >= key_dict.get(current[0], 0):
+                key_dict[current[0]] = int(current[1])
+        result = {}
+        for key in key_dict:
+            data = []
+            label = []
+            for count in range(key_dict[key]):
+                if count == 0:
+                    data = data_dict[key + '_' + str(count) + '_data']
+                    label = data_dict[key + '_' + str(count) + '_labels']
+                else:
+                    data = np.append(data, data_dict[key + '_' + str(count) + '_data'], axis=0)
+                    label = np.append(label, data_dict[key + '_' + str(count) + '_labels'], axis=0)
+            result[key + '_dataset'] = data
+            result[key + '_labels'] = label
+        return result
+    
     def gen_composite(train_data = train_image_data, test_data = test_image_data, force = False):
         dataset_name = 'notMNIST_ML_data.npz'
+        force = True
         if force or not os.path.exists(dataset_name):
             train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
+            dataset = divide_dataset(train_dataset, train_labels, 'train', parts = 2)
             valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
+            dataset = divide_dataset(valid_dataset, valid_labels, 'valid', data_dict = dataset, parts = 1)
             test_dataset, test_box, test_labels = gen_dataset_2(test_data)
-            dataset = {'train_dataset':train_dataset, 'train_box':train_box,
-                       'train_labels':train_labels, 'valid_dataset':valid_dataset, 
-                       'valid_box':valid_box, 'valid_labels':valid_labels,
-                       'test_dataset':test_dataset, 'test_box':test_box, 
-                       'test_labels':test_labels}
+            dataset = divide_dataset(test_dataset, test_labels, 'test', data_dict = dataset, parts = 1)            
+#            dataset['train_0_box'] = train_box
+#            dataset['valid_0_box'] = train_box
+#            dataset['test_0_box'] = train_box
             try:
                 np.savez(dataset_name, **dataset)
             except Exception as e:
                 print('Unable to save data to', dataset_name, ':', e)
         else:
-            try: 
+            try:                 
                 dataset = np.load(dataset_name)
-                train_dataset = dataset['train_dataset']
-                train_box = dataset['train_box']
-                train_labels = dataset['train_labels']
-                valid_dataset = dataset['valid_dataset']
-                valid_box = dataset['valid_box']
-                valid_labels = dataset['valid_labels']
-                test_dataset = dataset['test_dataset']
-                test_box = dataset['test_box']
-                test_labels = dataset['test_labels']
-                dataset.close()
             except Exception as e:
               print('Unable to process data from', dataset, ':', e)
               raise
-        print(dataset_name)
-        return (train_dataset, train_box, train_labels, valid_dataset, valid_box, 
-                valid_labels, test_dataset, test_labels, test_labels)
-    
-    train_dataset, train_box, train_labels, valid_dataset, valid_box, valid_labels, test_dataset, test_labels, test_labels = gen_composite()
-    
-    dataset = {}
-    dataset['train_dataset'] = train_dataset
-    dataset['train_labels'] = train_labels
-    dataset['valid_dataset'] = valid_dataset
-    dataset['valid_labels'] = valid_labels
-    dataset['test_dataset'] = test_dataset
-    dataset['test_labels'] = test_labels
-    
-#    import matplotlib.pyplot as plt
-#    plt.imshow(train_dataset[0])
-#    plt.show()
-    print(train_labels[0])
-#    return gen_dataset(test_image_data)
+        return reassemble_dataset(dataset)
+        
+
+    dataset = gen_composite()
     return dataset
 
 mnist_data = make_composite_dataset()
+
+train_dataset = mnist_data['train_dataset']
+train_labels = mnist_data['train_labels']
+valid_dataset = mnist_data['valid_dataset']
+valid_labels = mnist_data['valid_labels']
+test_dataset = mnist_data['test_dataset']
+test_labels = mnist_data['test_labels']
+
 import matplotlib.pyplot as plt
 plt.imshow(mnist_data['train_dataset'][0])
