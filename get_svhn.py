@@ -30,6 +30,7 @@ def maybe_download(url, filename, expected_bytes, force=False):
       return filename
 
 def maybe_extract(filename, force=False):
+      """Extract images from .tar file and save individually for further processing"""
       root = os.path.splitext(os.path.splitext(filename)[0])[0]  # remove .tar.gz
       if os.path.isdir(root) and not force:
         # You may override by setting force=True.
@@ -42,11 +43,12 @@ def maybe_extract(filename, force=False):
         tar.close()
 
 def read_mat_7_3(mat_file):
-    import digitStruct
+    """Convert MatLab 7.3 .mat file into Numpy arrays"""
+    import digitStruct  #Use sarahrn/Py-Gsvhn-DigiStruct-Reader to decode file
     objectList = []
     x_pix = []
     y_pix = []
-    for dsObj in digitStruct.yieldNextDigitStruct(mat_file):
+    for dsObj in digitStruct.yieldNextDigitStruct(mat_file): #Only call to digiStruct
         label = ''
         bounding = []
         for bbox in dsObj.bboxList:
@@ -82,6 +84,7 @@ def read_mat_7_3(mat_file):
     return dataset, bbox_set, sizes
     
 def get_mat_7_3(mat_file, force=False):
+    """Get the dataset from the file, use previously extracted data if available"""
     filename = mat_file[:-4] + '.npz'
     if force or not os.path.exists(filename):
         print('Attempting to build:', filename) 
@@ -91,11 +94,11 @@ def get_mat_7_3(mat_file, force=False):
         np.savez(filename, **data)
     else:
         data = np.load(filename)
-        
     return data['dataset'], data['bbox'], data['img_dims']
     
       
 def get_svhn_data_labels(dataset):
+    """Arrange dataset with image count reference first, rather than last"""
     working_data = np.swapaxes(dataset['X'], 2, 3)
     working_data = np.swapaxes(working_data, 1, 2)
     working_data = np.swapaxes(working_data, 0, 1)
@@ -103,7 +106,7 @@ def get_svhn_data_labels(dataset):
     return working_data, working_labels
 
 def small_svhn_dataset():
-    
+    """Downloads, builds and returns the small SVHN dataset"""
     svhn_url = 'http://ufldl.stanford.edu/housenumbers/'
 
     print('Starting')
@@ -136,7 +139,7 @@ def small_svhn_dataset():
     return dataset
 
 def big_svhn_dataset():
-   
+    """Downloads, builds and returns the big SVHN dataset"""
     svhn_url = 'http://ufldl.stanford.edu/housenumbers/'
 
     print('Starting')
@@ -167,12 +170,13 @@ def big_svhn_dataset():
     return dataset
 
 def make_composite_dataset(size):
+    """Encapsulating function, hides implementation details and matches function call to notMNIST_gen"""
     if (size == 'big'):
         return big_svhn_dataset()
     else:
         return small_svhn_dataset()
     
-svhn_data = make_composite_dataset('big')
+#svhn_data = make_composite_dataset('big')
 #import matplotlib.pyplot as plt
 #plt.imshow(svhn_data['train_dataset'][0])
 #print(svhn_data['train_labels'][0])
