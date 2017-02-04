@@ -151,7 +151,7 @@ def get_position(image_size, last_pos, constraint):
     return (x, y)
     
 def gen_dataset_2(source_dict, data_samples=10000, min_digits=1, max_digits=5, 
-                image_size=28, frame_size=128, image_buffer=2):
+                image_size=28, frame_size=64, image_buffer=2):
     dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
     bound_box = np.zeros((data_samples, max_digits, 3), np.uint8)
     labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
@@ -240,8 +240,7 @@ def gen_composite(force = False):
     print('Data Dictionaries Built')
 
     
-    #if force or not os.path.exists(dataset_name):
-    if True or not os.path.exists(dataset_name):
+    if force or not os.path.exists(dataset_name):
         train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
         dataset = divide_dataset(train_dataset, train_box, train_labels, 'train', parts = 2)
         valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
@@ -252,10 +251,10 @@ def gen_composite(force = False):
 #            dataset['train_0_box'] = train_box
 #            dataset['valid_0_box'] = train_box
 #            dataset['test_0_box'] = train_box
-#        try:
-#            np.savez(dataset_name, **dataset)
-#        except Exception as e:
-#            print('Unable to save data to', dataset_name, ':', e)
+        try:
+            np.savez(dataset_name, **dataset)
+        except Exception as e:
+            print('Unable to save data to', dataset_name, ':', e)
     else:
         try:                 
             dataset = np.load(dataset_name)
@@ -263,9 +262,6 @@ def gen_composite(force = False):
           print('Unable to process data from', dataset, ':', e)
           raise
     return reassemble_dataset(dataset)
-    
-
-mnist_data = gen_composite()
 
 #train_dataset = mnist_data['train_dataset']
 #train_labels = mnist_data['train_labels']
@@ -274,5 +270,8 @@ mnist_data = gen_composite()
 #test_dataset = mnist_data['test_dataset']
 #test_labels = mnist_data['test_labels']
 
-import matplotlib.pyplot as plt
-plt.imshow(mnist_data['train_dataset'][0])
+if __name__ == "__main__":
+    mnist_data = gen_composite()
+    import matplotlib.pyplot as plt
+    plt.imshow(mnist_data['train_dataset'][0])
+    print(mnist_data['train_labels'][0])
