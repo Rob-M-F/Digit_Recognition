@@ -153,7 +153,7 @@ def get_position(image_size, last_pos, constraint):
 def gen_dataset_2(source_dict, data_samples=10000, min_digits=1, max_digits=5, 
                 image_size=28, frame_size=128, image_buffer=2):
     dataset = np.zeros((data_samples, frame_size, frame_size), np.uint8)
-    bound_box = np.zeros((data_samples, max_digits, 2, 2), np.uint8)
+    bound_box = np.zeros((data_samples, max_digits, 3), np.uint8)
     labels = np.ndarray((data_samples), dtype=np.dtype('a'+str(max_digits)))
     for i in range(data_samples):
         working_digits = random.randint(min_digits, max_digits)
@@ -172,15 +172,14 @@ def gen_dataset_2(source_dict, data_samples=10000, min_digits=1, max_digits=5,
             position = get_position(image_size, position, constraint)
             place = position[0], position[0]+image_size, position[1], position[1]+image_size
             canvas[place[0]:place[1], place[2]:place[3]] = np.copy(image)
-            bound_box[i, j, 0, :] = int(round(place[0] * ratio)), int(round(place[2] * ratio))
-            bound_box[i, j, 1, :] = int(round(place[1] * ratio)), int(round(place[3] * ratio))
+            bound_box[i, j, :] = int(position[0] * ratio), int(position[1] * ratio), (image_size * ratio)
             label += letter
         label += ' '*(max_digits-len(label))
         dataset[i, 0:frame_size, 0:frame_size] = cv2.resize(np.copy(canvas), (frame_size, frame_size))
         labels[i] = label
     return dataset, bound_box, labels
 
-def divide_dataset(dataset, labels, name, data_dict = {}, parts=4):
+def divide_dataset(dataset, bbox, labels, name, data_dict = {}, parts=4):
     total_len = dataset.shape[0]
     if total_len % parts == 0:
         section_len = total_len // parts
@@ -192,6 +191,7 @@ def divide_dataset(dataset, labels, name, data_dict = {}, parts=4):
         if end > total_len:
             end = total_len
         data_dict[name + '_' + str(p) + '_data'] = dataset[start:end]
+        data_dict[name + '_' + str(p) + '_bbox'] = bbox[start:end]
         data_dict[name + '_' + str(p) + '_labels'] = labels[start:end]
     return data_dict
 
@@ -205,15 +205,19 @@ def reassemble_dataset(data_dict):
     result = {}
     for key in key_dict:
         data = []
+        bbox = []
         label = []
         for count in range(key_dict[key]+1):
             if count == 0:
                 data = data_dict[key + '_' + str(count) + '_data']
+                bbox = data_dict[key + '_' + str(count) + '_bbox']
                 label = data_dict[key + '_' + str(count) + '_labels']
             else:
                 data = np.append(data, data_dict[key + '_' + str(count) + '_data'], axis=0)
+                bbox = np.append(bbox, data_dict[key + '_' + str(count) + '_bbox'], axis=0)
                 label = np.append(label, data_dict[key + '_' + str(count) + '_labels'], axis=0)
         result[key + '_dataset'] = data
+        result[key + '_bbox'] = bbox
         result[key + '_labels'] = label
     return result
 
@@ -239,14 +243,12 @@ def gen_composite(force = False):
     #if force or not os.path.exists(dataset_name):
     if True or not os.path.exists(dataset_name):
         train_dataset, train_box, train_labels = gen_dataset_2(train_data, 200000)
-        dataset = divide_dataset(train_dataset, train_labels, 'train', parts = 2)
+        dataset = divide_dataset(train_dataset, train_box, train_labels, 'train', parts = 2)
         valid_dataset, valid_box, valid_labels = gen_dataset_2(train_data)
-        dataset = divide_dataset(valid_dataset, valid_labels, 'valid', data_dict = dataset, parts = 1)
+        dataset = divide_dataset(valid_dataset, valid_box, valid_labels, 'valid', data_dict = dataset, parts = 1)
         test_dataset, test_box, test_labels = gen_dataset_2(test_data)
-        dataset = divide_dataset(test_dataset, test_labels, 'test', data_dict = dataset, parts = 1)            
-        print('\nData to save:')
-        for k in dataset.keys():
-            print(k, dataset[k].shape)
+        dataset = divide_dataset(test_dataset, test_box, test_labels, 'test', data_dict = dataset, parts = 1)            
+
 #            dataset['train_0_box'] = train_box
 #            dataset['valid_0_box'] = train_box
 #            dataset['test_0_box'] = train_box
@@ -264,10 +266,6 @@ def gen_composite(force = False):
     
 
 mnist_data = gen_composite()
-
-print('\nFinal Results:')
-for i in mnist_data.keys():
-    print(i, len(mnist_data[i]))
 
 #train_dataset = mnist_data['train_dataset']
 #train_labels = mnist_data['train_labels']
