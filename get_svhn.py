@@ -96,47 +96,17 @@ def get_mat_7_3(mat_file, force=False):
         data = np.load(filename)
     return data['dataset'], data['bbox'], data['img_dims']
 
-def image_conversion(dataset, bbox):
-    out_data = np.zeros((dataset.shape[0],64,64), dtype=np.float32)
-    out_bbox = np.zeros((dataset.shape[0],5,4), dtype=np.int32)
-    out_labels = np.zeros((dataset.shape[0],5), dtype=np.uint8).astype('|S1')
-    for i, image in enumerate(dataset):
+def label_extraction(bbox):
+    out_labels = np.zeros((bbox.shape[0],5), dtype=np.uint8).astype('|S1')
+    out_bbox = np.zeros((bbox.shape[0],5,4), dtype=np.uint32)
+    for i in range(bbox.shape[0]):
         for j in range(5):
             if np.sum(bbox[i,j]) > 0:
                 out_labels[i,j] = str(bbox[i,j,0])
-                char_left = bbox[i,j,1]
-                char_bottom = bbox[i,j,2]
-                char_right = char_left + bbox[i,j,3]
-                char_top = char_bottom + bbox[i,j,4]
+                out_bbox[i,j,:] = bbox[i,j,1:]
             else:
                 out_labels[i,j] = ' '
-                char_left = 0
-                char_bottom = 0
-                char_right = 0
-                char_top = 0
-            if j == 0:
-                image_left = char_left
-                image_bottom = char_bottom
-                image_right = char_right
-                image_top = char_top
-            if out_labels[i, j] != ' ':
-                if char_left < image_left:
-                    image_left = char_left
-                if char_bottom < image_bottom:
-                    image_bottom = char_bottom
-                if char_right > image_right:
-                    image_right = char_right
-                if char_top > image_top:
-                    image_top = char_top
-        digits_width = image_right-image_left
-        digits_height = image_top-image_bottom
-        print(dataset[i, 0])
-        image = cv2.imread(dataset[i,0].decode("utf-8"), 0)
-        image = image[image_left:digits_width, image_bottom:digits_height].astype(np.float32)
-        image *= 255.0/image.max()
-        image = cv2.resize(image, (64,64))
-        out_data[i,:, :] = cv2.resize(image,(64,64))
-    return out_data, out_bbox, out_labels
+    return out_bbox, out_labels
       
 def get_svhn_data_labels(dataset):
     """Arrange dataset with image count reference first, rather than last"""
@@ -169,10 +139,10 @@ def small_svhn_dataset():
     print('Prepared')  
     
     dataset = {}
-    dataset['train_dataset'] = extra_dataset[32000:]
-    dataset['train_labels'] = extra_labels[32000:]
-    dataset['valid_dataset'] = extra_dataset[:32000]
-    dataset['valid_labels'] = extra_labels[:32000]
+    dataset['train_dataset'] = extra_dataset[40000:]
+    dataset['train_labels'] = extra_labels[40000:]
+    dataset['valid_dataset'] = extra_dataset[:40000]
+    dataset['valid_labels'] = extra_labels[:40000]
     dataset['test_dataset'] = test_dataset
     dataset['test_labels'] = test_labels
     print('Dataset Built')    
@@ -198,12 +168,16 @@ def big_svhn_dataset():
     train_dataset, train_bbox, train_dims = get_mat_7_3("train\digitStruct.mat")
     extra_dataset, extra_bbox, extra_dims = get_mat_7_3("extra\digitStruct.mat")
     print('Loading Complete')
+
+    extra_dataset = np.concatenate((extra_dataset, train_dataset))
+    extra_bbox = np.concatenate((extra_bbox, train_bbox))
+    extra_dims = np.concatenate((extra_dims, train_dims))
+    print('Combine Train and Extra')
     
-    test_dataset, test_bbox, test_labels = image_conversion(test_dataset, test_bbox)
-    train_dataset, train_bbox, train_labels = image_conversion(train_dataset, train_bbox)
-    extra_dataset, extra_bbox, extra_labels = image_conversion(extra_dataset, extra_bbox)
+    test_bbox, test_labels = label_extraction(test_bbox)
+    extra_bbox, extra_labels = label_extraction(extra_bbox)
+    print('Labels Extracted')
     
-    print('Images Converted')
     
     dataset = {}
     dataset['train_dataset'] = extra_dataset[32000:]
