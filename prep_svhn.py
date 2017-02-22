@@ -13,7 +13,8 @@ from matplotlib.patches import Rectangle
 
 def load_image(image_dir):
     image = cv2.imread(image_dir.decode('utf-8'), 0)
-    image = (image.astype(np.float32) - 127) / 127
+    image = image.astype(np.float32)
+#    image = (image.astype(np.float32) - 127.) / 127.
     return image
 
 def make_window(image, old_bbox, buffer=10):
@@ -126,33 +127,28 @@ def reassemble_dataset(data_dict):
 
 
 def prep_dataset(source_dataset, source_bbox, sample=-1):    
-    data_len = source_dataset.shape[0]
-    cropped_dataset = np.zeros((data_len, 64, 64), dtype=np.float32)
-    cropped_bbox = np.zeros((data_len, 5, 4), dtype=np.int8)
-    for i in range(data_len):
-        image = load_image(source_dataset[i][0])
-        working_bbox = source_bbox[i].copy()
-        window = make_window(image, working_bbox)
-        cropped, new_bbox = crop_image(image, window, working_bbox)
-        cropped_dataset[i] = cropped.copy()
-        cropped_bbox[i] = new_bbox.copy()
-    if sample >= 0:
-        subplt_h = 1
-        subplt_w = 2
-        f, axarr = plt.subplots(subplt_h, subplt_w)
-        axarr[0].imshow(source_dataset[sample])
-        bbox_patch(axarr[0],source_bbox[sample])
-        axarr[1].imshow(cropped_dataset[sample])
-        bbox_patch(axarr[1], cropped_bbox[sample])
+    cropped_dataset = list() # np.zeros((data_len, 64, 64), dtype=np.float32)
+    cropped_bbox = list() # np.zeros((data_len, 5, 4), dtype=np.int8)
+    for filename, filebox in zip(source_dataset, source_bbox):
+        try:
+            image = load_image(filename[0])
+            working_bbox = filebox.copy()
+            window = make_window(image, working_bbox)
+            cropped, new_bbox = crop_image(image, window, working_bbox)
+            cropped_dataset.append(cropped.copy())
+            cropped_bbox.append(new_bbox.copy())
+        except Exception as e:
+            print('There is a problem with: ', filename)
+    cropped_dataset = np.asarray(cropped_dataset, dtype=np.float32)
+    cropped_bbox = np.asarray(cropped_bbox, dtype=np.int8)
     return cropped_dataset, cropped_bbox
     
 def get_dataset(force=False):
     svhn_data = get_svhn.make_composite_dataset('big')
-    print(svhn_data.keys())
     dataset_name = 'svhn_matrices.npz'
     if force or not os.path.exists(dataset_name):
-        #train_dataset, train_box = prep_dataset(svhn_data['train_dataset'], svhn_data['train_bbox'], 10)
-#        valid_dataset, valid_box = prep_dataset(svhn_data['valid_dataset'], svhn_data['valid_bbox'], 10)
+        train_dataset, train_box = prep_dataset(svhn_data['train_dataset'], svhn_data['train_bbox'], 10)
+        valid_dataset, valid_box = prep_dataset(svhn_data['valid_dataset'], svhn_data['valid_bbox'], 10)
         test_dataset, test_box = prep_dataset(svhn_data['test_dataset'], svhn_data['test_bbox'], 10)
         train_labels = svhn_data['train_labels']
         valid_labels = svhn_data['valid_labels']
@@ -160,6 +156,8 @@ def get_dataset(force=False):
         dataset = divide_dataset(train_dataset, train_box, train_labels, 'train', parts = 2)
         dataset = divide_dataset(valid_dataset, valid_box, valid_labels, 'valid', data_dict = dataset, parts = 1)
         dataset = divide_dataset(test_dataset, test_box, test_labels, 'test', data_dict = dataset, parts = 1)            
+
+#        dataset = divide_dataset(test_dataset, test_box, test_labels, 'test', parts = 1)            
         try:
             np.savez(dataset_name, **dataset)
         except Exception as e:
@@ -172,8 +170,20 @@ def get_dataset(force=False):
       raise
     return reassemble_dataset(dataset)
 
-
-svhn_matrix = get_dataset()
-
-    #for i in svhn_data:
-    #    print(i, svhn_data[i].shape)
+if __name__ == "__main__":    
+    svhn_matrix = get_dataset()
+    for i in svhn_matrix:
+        print(i, svhn_matrix[i].shape)
+    subplt_h = 2
+    subplt_w = 3
+    samples = [[(svhn_matrix['train_dataset'][10], svhn_matrix['train_bbox'][10]),
+               (svhn_matrix['test_dataset'][10], svhn_matrix['test_bbox'][10]),
+               (svhn_matrix['valid_dataset'][10], svhn_matrix['valid_bbox'][10])],
+               [(svhn_matrix['train_dataset'][100], svhn_matrix['train_bbox'][100]),
+               (svhn_matrix['valid_dataset'][100], svhn_matrix['valid_bbox'][100]),
+               (svhn_matrix['test_dataset'][100], svhn_matrix['test_bbox'][100]),]]
+    f, axarr = plt.subplots(subplt_h, subplt_w)    
+    for r, row in enumerate(samples):
+            for c, column in enumerate(row):
+                axarr[r, c].imshow(column[0])
+                bbox_patch(axarr[r, c], column[1])
