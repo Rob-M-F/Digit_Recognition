@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 def load_image(image_dir):
-    image = cv2.imread(image_dir.decode('utf-8'), 1)
+    image = cv2.imread(image_dir.decode('utf-8'), 0)
     image = image.astype(np.float32)
 #    image = (image.astype(np.float32) - 127.) / 127.
     return image
@@ -65,16 +65,16 @@ def crop_bbox(source_bbox, window, ratio):
     return (new_bbox * ratio).astype(np.int8)
 
 def crop_image(image, window, bbox):
-    cropped = image[window[1]:window[1]+window[3], window[0]:window[0]+window[2], :]
-    resized = np.zeros((64,64,3), dtype=np.float32)
+    cropped = image[window[1]:window[1]+window[3], window[0]:window[0]+window[2]]
+    resized = np.zeros((64,64), dtype=np.float32)
     shape = cropped.shape
     new_box = bbox
-#    if (shape[0] > 64) or (shape[1] > 64):
-    ratio = 64.0 / max(shape)
-    cropped = cv2.resize(cropped, (0, 0), fx=ratio, fy=ratio)
-    new_box = crop_bbox(bbox, window, ratio)
-    shape = cropped.shape
-    resized[0:shape[0], 0:shape[1],:] = cropped
+    if (shape[0] > 64) or (shape[1] > 64):
+        ratio = 64.0 / max(shape)
+        cropped = cv2.resize(cropped, (0, 0), fx=ratio, fy=ratio)
+        new_box = crop_bbox(bbox, window, ratio)
+        shape = cropped.shape
+    resized[0:shape[0], 0:shape[1]] = cropped
     return resized, new_box
 
 def bbox_patch(subplot, bbox):
@@ -171,7 +171,7 @@ def get_dataset(force=False):
     return reassemble_dataset(dataset)
 
 if __name__ == "__main__":    
-    svhn_matrix = get_dataset(force=True)
+    svhn_matrix = get_dataset()
     for i in svhn_matrix:
         print(i, svhn_matrix[i].shape)
     subplt_h = 2
