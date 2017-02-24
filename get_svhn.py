@@ -169,23 +169,23 @@ def big_svhn_dataset():
     extra_dataset, extra_bbox, extra_dims = get_mat_7_3("extra\digitStruct.mat")
     print('Loading Complete')
 
-    extra_dataset = np.concatenate((extra_dataset, train_dataset))
-    extra_bbox = np.concatenate((extra_bbox, train_bbox))
-    extra_dims = np.concatenate((extra_dims, train_dims))
-    print('Combine Train and Extra')
+#    extra_dataset = np.concatenate((extra_dataset, train_dataset))
+#    extra_bbox = np.concatenate((extra_bbox, train_bbox))
+#    extra_dims = np.concatenate((extra_dims, train_dims))
+#    print('Combine Train and Extra')
     
     test_bbox, test_labels = label_extraction(test_bbox)
-    extra_bbox, extra_labels = label_extraction(extra_bbox)
+    train_bbox, train_labels = label_extraction(train_bbox)
     print('Labels Extracted')
     
     
     dataset = {}
-    dataset['train_dataset'] = extra_dataset[32000:]
-    dataset['train_bbox'] = extra_bbox[32000:]
-    dataset['train_labels'] = extra_labels[32000:]
-    dataset['valid_dataset'] = extra_dataset[:32000]
-    dataset['valid_bbox'] = extra_bbox[:32000]
-    dataset['valid_labels'] = extra_labels[:32000]
+    dataset['train_dataset'] = train_dataset[12000:]
+    dataset['train_bbox'] = train_bbox[12000:]
+    dataset['train_labels'] = train_labels[12000:]
+    dataset['valid_dataset'] = train_dataset[:12000]
+    dataset['valid_bbox'] = train_bbox[:12000]
+    dataset['valid_labels'] = train_labels[:12000]
     dataset['test_dataset'] = test_dataset
     dataset['test_bbox'] = test_bbox
     dataset['test_labels'] = test_labels
@@ -200,9 +200,9 @@ def make_composite_dataset(size):
     else:
         return small_svhn_dataset()
     
-svhn_data = make_composite_dataset('big')
+#svhn_data = make_composite_dataset('big')
 #import matplotlib.pyplot as plt
 #plt.imshow(svhn_data['train_dataset'][0])
 #print(svhn_data['train_labels'][0])
-for i in svhn_data:
-    print(i, svhn_data[i].shape)
+#for i in svhn_data:
+#    print(i, svhn_data[i].shape)
