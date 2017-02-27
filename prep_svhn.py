@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 def load_image(image_dir):
-    image = cv2.imread(image_dir.decode('utf-8'), 0)
+    image = cv2.imread(image_dir.decode('utf-8'), 1)
     image = image.astype(np.float32)
 #    image = (image.astype(np.float32) - 127.) / 127.
     return image
@@ -59,14 +59,14 @@ def make_window(image, old_bbox, buffer=10):
 def crop_bbox(source_bbox, window, ratio):
     new_bbox = source_bbox
     for b, bbox in enumerate(source_bbox):
-        if np.sum(bbox) > 0:
+        if np.sum(bbox) != 0:
             new_bbox[b, 0] = bbox[0] - window[0]
             new_bbox[b,1] = bbox[1] - window[1]
     return (new_bbox * ratio).astype(np.int8)
 
 def crop_image(image, window, bbox):
     cropped = image[window[1]:window[1]+window[3], window[0]:window[0]+window[2]]
-    resized = np.zeros((64,64), dtype=np.float32)
+    resized = np.zeros((64,64,3), dtype=np.float32)
     shape = cropped.shape
     new_box = bbox
     if (shape[0] > 64) or (shape[1] > 64):
@@ -74,7 +74,7 @@ def crop_image(image, window, bbox):
         cropped = cv2.resize(cropped, (0, 0), fx=ratio, fy=ratio)
         new_box = crop_bbox(bbox, window, ratio)
         shape = cropped.shape
-    resized[0:shape[0], 0:shape[1]] = cropped
+    resized[0:shape[0], 0:shape[1], :] = cropped
     return resized, new_box
 
 def bbox_patch(subplot, bbox):
@@ -170,20 +170,23 @@ def get_dataset(force=False):
       raise
     return reassemble_dataset(dataset)
 
+def visual_check():
+    samples = [('train', svhn_matrix['train_dataset'], svhn_matrix['train_bbox']),
+               ('test', svhn_matrix['test_dataset'], svhn_matrix['test_bbox']),
+               ('valid', svhn_matrix['valid_dataset'], svhn_matrix['valid_bbox'])]
+    subplt_h = 5
+    f, axarr = plt.subplots(subplt_h, subplt_h)     
+    for r in range(subplt_h):
+        for c in range(subplt_h):
+            data = np.random.randint(0, 3)
+            sample = np.random.randint(0,samples[data][1].shape[0])
+            axarr[r, c].set_title(samples[data][0] + ' ' + str(sample))
+            axarr[r, c].imshow(samples[data][1][sample])
+            bbox_patch(axarr[r, c], samples[data][2][sample])
+    
+
 if __name__ == "__main__":    
-    svhn_matrix = get_dataset()
+    svhn_matrix = get_dataset(force=True)
     for i in svhn_matrix:
         print(i, svhn_matrix[i].shape)
-    subplt_h = 2
-    subplt_w = 3
-    samples = [[(svhn_matrix['train_dataset'][10], svhn_matrix['train_bbox'][10]),
-               (svhn_matrix['test_dataset'][10], svhn_matrix['test_bbox'][10]),
-               (svhn_matrix['valid_dataset'][10], svhn_matrix['valid_bbox'][10])],
-               [(svhn_matrix['train_dataset'][100], svhn_matrix['train_bbox'][100]),
-               (svhn_matrix['valid_dataset'][100], svhn_matrix['valid_bbox'][100]),
-               (svhn_matrix['test_dataset'][100], svhn_matrix['test_bbox'][100]),]]
-    f, axarr = plt.subplots(subplt_h, subplt_w)    
-    for r, row in enumerate(samples):
-            for c, column in enumerate(row):
-                axarr[r, c].imshow(column[0])
-                bbox_patch(axarr[r, c], column[1])
+    visual_check()
