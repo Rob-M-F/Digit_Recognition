@@ -199,10 +199,11 @@ def make_composite_dataset(size):
         return big_svhn_dataset()
     else:
         return small_svhn_dataset()
-    
-svhn_data = make_composite_dataset('big')
-#import matplotlib.pyplot as plt
-#plt.imshow(svhn_data['train_dataset'][0])
-#print(svhn_data['train_labels'][0])
-for i in svhn_data:
-    print(i, svhn_data[i].shape)
+
+if __name__ == "__main__":    
+    svhn_data = make_composite_dataset('big')
+    import matplotlib.pyplot as plt
+    plt.imshow(svhn_data['train_dataset'][0])
+    print(svhn_data['train_labels'][0])
+    for i in svhn_data:
+        print(i, svhn_data[i].shape)
